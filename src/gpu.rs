@@ -88,15 +88,15 @@ impl WGPUState {
         }
     }
 
-    fn input(&mut self, event: &WindowEvent) -> bool {
+    pub fn input(&mut self, event: &WindowEvent) -> bool {
+        false
+    }
+
+    pub fn update(&mut self) {
         todo!()
     }
 
-    fn update(&mut self) {
-        todo!()
-    }
-
-    fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         todo!()
     }
 }
