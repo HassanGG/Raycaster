@@ -1,8 +1,6 @@
-use winit::{
-    event::*, window::{Window},
-};
+use winit::{event::*, window::Window};
 
-pub struct GPUState {
+pub struct WGPUState {
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -11,8 +9,7 @@ pub struct GPUState {
     window: Window,
 }
 
-
-impl GPUState {
+impl WGPUState {
     pub async fn new(window: Window) -> Self {
         let size = window.inner_size();
 
@@ -20,6 +17,7 @@ impl GPUState {
             backends: wgpu::Backends::all(),
             dx12_shader_compiler: Default::default(),
         });
+
         let surface = unsafe { instance.create_surface(&window) }.unwrap();
 
         let adapter = instance
@@ -46,6 +44,7 @@ impl GPUState {
             )
             .await
             .unwrap();
+
         let surface_caps = surface.get_capabilities(&adapter);
         let surface_format = surface_caps
             .formats
@@ -53,6 +52,7 @@ impl GPUState {
             .copied()
             .find(|f| f.is_srgb())
             .unwrap_or(surface_caps.formats[0]);
+
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
@@ -62,7 +62,9 @@ impl GPUState {
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
         };
+
         surface.configure(&device, &config);
+
         Self {
             window,
             surface,
@@ -77,8 +79,13 @@ impl GPUState {
         &self.window
     }
 
-    fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        todo!()
+    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+        if new_size.width > 0 && new_size.height > 0 {
+            self.size = new_size;
+            self.config.width = new_size.width;
+            self.config.height = new_size.height;
+            self.surface.configure(&self.device, &self.config);
+        }
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool {

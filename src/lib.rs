@@ -3,7 +3,7 @@ use wasm_bindgen::prelude::*;
 
 pub mod gpu;
 
-use gpu::GPUState;
+use gpu::WGPUState;
 
 use winit::{
     event::*,
@@ -25,7 +25,7 @@ pub async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Raycaster")
-        .with_inner_size(winit::dpi::PhysicalSize::new(450, 400))
+        .with_inner_size(winit::dpi::PhysicalSize::new(1000, 800))
         .build(&event_loop)
         .unwrap();
 
@@ -41,11 +41,10 @@ pub async fn run() {
                     Some(())
                 })
                 .expect("Couldn't append canvas to document body.");
-
         }
     }
 
-    let state = GPUState::new(window).await;
+    let mut state = WGPUState::new(window).await;
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
@@ -62,6 +61,14 @@ pub async fn run() {
                     },
                 ..
             } => *control_flow = ControlFlow::Exit,
+
+            WindowEvent::Resized(physical_size) => {
+                state.resize(*physical_size);
+            }
+            WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                state.resize(**new_inner_size);
+            }
+
             _ => {}
         },
         _ => {}
