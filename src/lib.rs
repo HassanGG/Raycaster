@@ -1,7 +1,8 @@
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-pub mod gpu;
+mod gpu;
+mod vertex;
 
 use gpu::WGPUState;
 

@@ -1,3 +1,6 @@
+use crate::vertex;
+use vertex::{Vertex, INDICES, VERTICES};
+use wgpu::util::DeviceExt;
 use winit::{event::*, window::Window};
 
 pub struct WGPUState {
@@ -8,11 +11,16 @@ pub struct WGPUState {
     pub size: winit::dpi::PhysicalSize<u32>,
     window: Window,
     render_pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
+    num_verties: u32,
+    index_buffer: wgpu::Buffer,
+    num_indices: u32,
 }
 
 impl WGPUState {
     pub async fn new(window: Window) -> Self {
         let size = window.inner_size();
+        let num_verties = VERTICES.len() as u32;
 
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
@@ -83,8 +91,8 @@ impl WGPUState {
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
-                entry_point: "vs_main", // 1.
-                buffers: &[],           // 2.
+                entry_point: "vs_main",     // 1.
+                buffers: &[Vertex::desc()], // 2.
             },
             fragment: Some(wgpu::FragmentState {
                 // 3.
@@ -120,6 +128,18 @@ impl WGPUState {
             multiview: None, // 5.
         });
 
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(VERTICES),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Index Buffer"),
+            contents: bytemuck::cast_slice(INDICES),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+        let num_indices = INDICES.len() as u32;
+
         Self {
             window,
             surface,
@@ -128,6 +148,10 @@ impl WGPUState {
             config,
             size,
             render_pipeline,
+            vertex_buffer,
+            num_verties,
+            index_buffer,
+            num_indices,
         }
     }
 
@@ -185,8 +209,10 @@ impl WGPUState {
                 depth_stencil_attachment: None,
             });
 
-            render_pass.set_pipeline(&self.render_pipeline); 
-            render_pass.draw(0..3, 0..1); 
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16); // 1.
+            render_pass.draw_indexed(0..self.num_indices, 0, 0..1); // 2.
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
