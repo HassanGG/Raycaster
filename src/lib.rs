@@ -3,6 +3,7 @@ use wasm_bindgen::prelude::*;
 
 mod gpu;
 mod vertex;
+mod graphics;
 
 use gpu::WGPUState;
 

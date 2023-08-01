@@ -12,7 +12,7 @@ pub struct WGPUState {
     window: Window,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
-    num_verties: u32,
+    num_vertices: u32,
     index_buffer: wgpu::Buffer,
     num_indices: u32,
 }
@@ -20,7 +20,7 @@ pub struct WGPUState {
 impl WGPUState {
     pub async fn new(window: Window) -> Self {
         let size = window.inner_size();
-        let num_verties = VERTICES.len() as u32;
+        let num_vertices = VERTICES.len() as u32;
 
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
@@ -91,15 +91,13 @@ impl WGPUState {
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
-                entry_point: "vs_main",     // 1.
-                buffers: &[Vertex::desc()], // 2.
+                entry_point: "vs_main",     
+                buffers: &[Vertex::desc()], 
             },
             fragment: Some(wgpu::FragmentState {
-                // 3.
                 module: &shader,
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::ColorTargetState {
-                    // 4.
                     format: config.format,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
@@ -118,14 +116,13 @@ impl WGPUState {
                 // Requires Features::CONSERVATIVE_RASTERIZATION
                 conservative: false,
             },
-            // continued ...
-            depth_stencil: None, // 1.
+            depth_stencil: None, 
             multisample: wgpu::MultisampleState {
-                count: 1,                         // 2.
-                mask: !0,                         // 3.
-                alpha_to_coverage_enabled: false, // 4.
+                count: 1,                        
+                mask: !0,                         
+                alpha_to_coverage_enabled: false, 
             },
-            multiview: None, // 5.
+            multiview: None, 
         });
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -133,11 +130,13 @@ impl WGPUState {
             contents: bytemuck::cast_slice(VERTICES),
             usage: wgpu::BufferUsages::VERTEX,
         });
+
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
             contents: bytemuck::cast_slice(INDICES),
             usage: wgpu::BufferUsages::INDEX,
         });
+
         let num_indices = INDICES.len() as u32;
 
         Self {
@@ -149,7 +148,7 @@ impl WGPUState {
             size,
             render_pipeline,
             vertex_buffer,
-            num_verties,
+            num_vertices,
             index_buffer,
             num_indices,
         }
@@ -198,9 +197,9 @@ impl WGPUState {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
                             a: 1.0,
                         }),
                         store: true,
@@ -211,8 +210,8 @@ impl WGPUState {
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16); // 1.
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..1); // 2.
+            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16); 
+            render_pass.draw_indexed(0..self.num_indices, 0, 0..1); 
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
