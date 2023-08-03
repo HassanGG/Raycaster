@@ -1,8 +1,8 @@
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
-    position: [f32; 2],
-    color: [f32; 3],
+    pub position: [f32; 2],
+    pub color: [f32; 3],
 }
 
 pub const VERTICES: &[Vertex] = &[

@@ -14,8 +14,11 @@ pub struct WGPUState {
     vertex_buffer: wgpu::Buffer,
     num_vertices: u32,
     index_buffer: wgpu::Buffer,
-    num_indices: u32,
+    pub num_indices: u32,
 }
+
+const MAX_VERTICES: u64 = 4000;
+const MAX_INDICES: u64 = 6000;
 
 impl WGPUState {
     pub async fn new(window: Window) -> Self {
@@ -91,8 +94,8 @@ impl WGPUState {
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
-                entry_point: "vs_main",     
-                buffers: &[Vertex::desc()], 
+                entry_point: "vs_main",
+                buffers: &[Vertex::desc()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -116,28 +119,31 @@ impl WGPUState {
                 // Requires Features::CONSERVATIVE_RASTERIZATION
                 conservative: false,
             },
-            depth_stencil: None, 
+            depth_stencil: None,
             multisample: wgpu::MultisampleState {
-                count: 1,                        
-                mask: !0,                         
-                alpha_to_coverage_enabled: false, 
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
             },
-            multiview: None, 
+            multiview: None,
         });
 
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(VERTICES),
-            usage: wgpu::BufferUsages::VERTEX,
+
+        let vertex_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("vertex_buffer"),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            size: std::mem::size_of::<Vertex>() as u64 * MAX_VERTICES,
+            mapped_at_creation: false,
         });
 
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(INDICES),
-            usage: wgpu::BufferUsages::INDEX,
+        let index_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("index_buffer"),
+            usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+            size: std::mem::size_of::<u16>() as u64 * MAX_INDICES,
+            mapped_at_creation: false,
         });
+        let num_indices = 0;
 
-        let num_indices = INDICES.len() as u32;
 
         Self {
             window,
@@ -151,6 +157,7 @@ impl WGPUState {
             num_vertices,
             index_buffer,
             num_indices,
+
         }
     }
 
@@ -174,7 +181,16 @@ impl WGPUState {
         }
     }
 
-    pub fn update(&mut self) {}
+    pub fn update(&mut self, vertices: &[Vertex], indices: &[u16]) {
+        self.num_indices = indices.len() as u32;
+        self.num_vertices = vertices.len() as u32;
+
+        self.queue
+            .write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(vertices));
+
+        self.queue
+            .write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(indices));
+    }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
@@ -208,11 +224,13 @@ impl WGPUState {
                 depth_stencil_attachment: None,
             });
 
+
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16); 
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..1); 
+            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
         }
+
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();

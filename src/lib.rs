@@ -2,8 +2,8 @@
 use wasm_bindgen::prelude::*;
 
 mod gpu;
-mod vertex;
 mod graphics;
+mod vertex;
 
 use gpu::WGPUState;
 
@@ -12,6 +12,8 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
+
+use crate::graphics::Graphics;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
@@ -47,27 +49,42 @@ pub async fn run() {
     }
 
     let mut state = WGPUState::new(window).await;
+    let mut graphics = Graphics::new(state);
+    let square = graphics::Square {
+        tl: [0.0, 0.8],
+        bl: [0.0, -0.5],
+        br: [0.5, -0.5],
+        tr: [0.5, 0.5],
+    };
+    graphics.push_square(square, [0.5, 0.0, 0.5]);
+    let square = graphics::Square {
+        tl: [0.5, 0.8],
+        bl: [0.5, -0.5],
+        br: [0.8, -0.5],
+        tr: [0.8, 0.5],
+    };
+    graphics.push_square(square, [0.5, 0.0, 0.5]);
+    graphics.draw();
 
     event_loop.run(move |event, _, control_flow| match event {
-        Event::RedrawRequested(window_id) if window_id == state.window().id() => {
-            state.update();
-            match state.render() {
+        Event::RedrawRequested(window_id) if window_id == graphics.gpu_state.window().id() => {
+            match graphics.gpu_state.render() {
                 Ok(_) => {}
-                Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
+                Err(wgpu::SurfaceError::Lost) => graphics.gpu_state.resize(graphics.gpu_state.size),
                 Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
                 Err(e) => eprintln!("{:?}", e),
             }
         }
 
         Event::MainEventsCleared => {
-            state.window().request_redraw();
+            graphics.gpu_state.window().request_redraw();
         }
 
         Event::WindowEvent {
             ref event,
             window_id,
-        } if window_id == state.window().id() => {
-            if !state.input(event) {
+        } if window_id == graphics.gpu_state.window().id() => {
+            if !graphics.gpu_state.input(event) {
                 match event {
                     WindowEvent::CloseRequested
                     | WindowEvent::KeyboardInput {
@@ -81,11 +98,11 @@ pub async fn run() {
                     } => *control_flow = ControlFlow::Exit,
 
                     WindowEvent::Resized(physical_size) => {
-                        state.resize(*physical_size);
+                        graphics.gpu_state.resize(*physical_size);
                     }
 
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                        state.resize(**new_inner_size);
+                        graphics.gpu_state.resize(**new_inner_size);
                     }
                     _ => {}
                 }
