@@ -1,6 +1,7 @@
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
+mod game;
 mod gpu;
 mod graphics;
 mod vertex;
@@ -14,6 +15,9 @@ use winit::{
 };
 
 use crate::graphics::Graphics;
+
+const WINDOW_SIZE: winit::dpi::PhysicalSize<i32> = winit::dpi::PhysicalSize::new(1000, 800);
+const ASPECT_RATIO: f32 = WINDOW_SIZE.height as f32 / WINDOW_SIZE.width as f32;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
@@ -29,7 +33,7 @@ pub async fn run() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Raycaster")
-        .with_inner_size(winit::dpi::PhysicalSize::new(1000, 800))
+        .with_inner_size(WINDOW_SIZE)
         .build(&event_loop)
         .unwrap();
 
@@ -50,41 +54,30 @@ pub async fn run() {
 
     let mut state = WGPUState::new(window).await;
     let mut graphics = Graphics::new(state);
-    let square = graphics::Square {
-        tl: [0.0, 0.8],
-        bl: [0.0, -0.5],
-        br: [0.5, -0.5],
-        tr: [0.5, 0.5],
-    };
-    graphics.push_square(square, [0.5, 0.0, 0.5]);
-    let square = graphics::Square {
-        tl: [0.5, 0.8],
-        bl: [0.5, -0.5],
-        br: [0.8, -0.5],
-        tr: [0.8, 0.5],
-    };
-    graphics.push_square(square, [0.5, 0.0, 0.5]);
-    graphics.draw();
+    let mut game = game::Game::new(graphics);
 
     event_loop.run(move |event, _, control_flow| match event {
-        Event::RedrawRequested(window_id) if window_id == graphics.gpu_state.window().id() => {
-            match graphics.gpu_state.render() {
+        Event::RedrawRequested(window_id) if window_id == game.graphics.gpu_state.window().id() => {
+            match game.update() {
                 Ok(_) => {}
-                Err(wgpu::SurfaceError::Lost) => graphics.gpu_state.resize(graphics.gpu_state.size),
+                Err(wgpu::SurfaceError::Lost) => {
+                    game.graphics.gpu_state.resize(game.graphics.gpu_state.size)
+                }
                 Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
                 Err(e) => eprintln!("{:?}", e),
             }
         }
 
         Event::MainEventsCleared => {
-            graphics.gpu_state.window().request_redraw();
+            game.update();
+            game.graphics.gpu_state.window().request_redraw();
         }
 
         Event::WindowEvent {
             ref event,
             window_id,
-        } if window_id == graphics.gpu_state.window().id() => {
-            if !graphics.gpu_state.input(event) {
+        } if window_id == game.graphics.gpu_state.window().id() => {
+            if !game.graphics.gpu_state.input(event) {
                 match event {
                     WindowEvent::CloseRequested
                     | WindowEvent::KeyboardInput {
@@ -98,11 +91,11 @@ pub async fn run() {
                     } => *control_flow = ControlFlow::Exit,
 
                     WindowEvent::Resized(physical_size) => {
-                        graphics.gpu_state.resize(*physical_size);
+                        game.graphics.gpu_state.resize(*physical_size);
                     }
 
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                        graphics.gpu_state.resize(**new_inner_size);
+                        game.graphics.gpu_state.resize(**new_inner_size);
                     }
                     _ => {}
                 }

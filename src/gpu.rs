@@ -15,6 +15,7 @@ pub struct WGPUState {
     num_vertices: u32,
     index_buffer: wgpu::Buffer,
     pub num_indices: u32,
+    pub aspect_ratio: f32,
 }
 
 const MAX_VERTICES: u64 = 4000;
@@ -24,7 +25,7 @@ impl WGPUState {
     pub async fn new(window: Window) -> Self {
         let size = window.inner_size();
         let num_vertices = VERTICES.len() as u32;
-
+        let aspect_ratio = window.inner_size().height as f32 / window.inner_size().width as f32;
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             dx12_shader_compiler: Default::default(),
@@ -128,7 +129,6 @@ impl WGPUState {
             multiview: None,
         });
 
-
         let vertex_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("vertex_buffer"),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
@@ -144,8 +144,8 @@ impl WGPUState {
         });
         let num_indices = 0;
 
-
         Self {
+            aspect_ratio,
             window,
             surface,
             device,
@@ -157,7 +157,6 @@ impl WGPUState {
             num_vertices,
             index_buffer,
             num_indices,
-
         }
     }
 
@@ -170,6 +169,7 @@ impl WGPUState {
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
+            self.aspect_ratio = new_size.height as f32 / new_size.width as f32;
             self.surface.configure(&self.device, &self.config);
         }
     }
@@ -224,13 +224,11 @@ impl WGPUState {
                 depth_stencil_attachment: None,
             });
 
-
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
         }
-
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
