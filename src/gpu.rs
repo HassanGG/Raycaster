@@ -1,7 +1,6 @@
 use crate::vertex;
-use vertex::{Vertex, INDICES, VERTICES};
-use wgpu::{util::DeviceExt, RenderPass};
-use winit::{event::*, window::Window};
+use vertex::Vertex;
+use winit::window::Window;
 
 pub struct WGPUState {
     surface: wgpu::Surface,
@@ -111,7 +110,6 @@ impl WGPUState {
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
@@ -152,11 +150,8 @@ impl WGPUState {
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
                 cull_mode: Some(wgpu::Face::Back),
-                // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
                 polygon_mode: wgpu::PolygonMode::Fill,
-                // Requires Features::DEPTH_CLIP_CONTROL
                 unclipped_depth: false,
-                // Requires Features::CONSERVATIVE_RASTERIZATION
                 conservative: false,
             },
             depth_stencil: None,
@@ -223,13 +218,6 @@ impl WGPUState {
         }
     }
 
-    pub fn input(&mut self, event: &WindowEvent) -> bool {
-        match event {
-            WindowEvent::CursorMoved { position, .. } => true,
-            _ => false,
-        }
-    }
-
     pub fn update_line(&mut self, vertices: &[Vertex]) {
         self.line_num_vertices = vertices.len() as u32;
 
@@ -282,7 +270,8 @@ impl WGPUState {
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_vertex_buffer(0, self.tri_vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.tri_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass
+                .set_index_buffer(self.tri_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(0..self.tri_num_indices, 0, 0..1);
         }
 

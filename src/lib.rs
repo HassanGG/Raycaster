@@ -17,7 +17,6 @@ use winit::{
 use crate::graphics::Graphics;
 
 const WINDOW_SIZE: winit::dpi::PhysicalSize<i32> = winit::dpi::PhysicalSize::new(1000, 800);
-const ASPECT_RATIO: f32 = WINDOW_SIZE.height as f32 / WINDOW_SIZE.width as f32;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
@@ -52,8 +51,8 @@ pub async fn run() {
         }
     }
 
-    let mut state = WGPUState::new(window).await;
-    let mut graphics = Graphics::new(state);
+    let state = WGPUState::new(window).await;
+    let graphics = Graphics::new(state);
     let mut game = game::Game::new(graphics);
 
     event_loop.run(move |event, _, control_flow| match event {
@@ -69,7 +68,6 @@ pub async fn run() {
         }
 
         Event::MainEventsCleared => {
-            game.update();
             game.graphics.gpu_state.window().request_redraw();
         }
 
@@ -77,7 +75,7 @@ pub async fn run() {
             ref event,
             window_id,
         } if window_id == game.graphics.gpu_state.window().id() => {
-            if !game.graphics.gpu_state.input(event) {
+            if !game.input(event) {
                 match event {
                     WindowEvent::CloseRequested
                     | WindowEvent::KeyboardInput {

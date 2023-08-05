@@ -5,30 +5,6 @@ pub struct Vertex {
     pub color: [f32; 3],
 }
 
-pub const VERTICES: &[Vertex] = &[
-    Vertex {
-        position: [0.0, 0.5],
-        color: [0.5, 0.0, 0.5],
-    }, 
-    Vertex {
-        position: [0.0, -0.5],
-        color: [0.5, 0.0, 0.5],
-    }, 
-    Vertex {
-        position: [0.5, -0.5],
-        color: [0.5, 0.0, 0.5],
-    }, 
-    Vertex {
-        position: [0.5, 0.5],
-        color: [0.5, 0.0, 0.5],
-    }, 
-];
-
-pub const INDICES: &[u16] = &[
-    0, 1, 2,
-    3, 0, 2,
-];
-
 impl Vertex {
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
