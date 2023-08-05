@@ -1,4 +1,4 @@
-use crate::graphics::{self, Graphics, Rect, Line};
+use crate::graphics::{self, Graphics, Line, Rect};
 
 pub struct Game {
     pub graphics: Graphics,
@@ -24,17 +24,13 @@ impl Game {
 
     fn push_player(&mut self) {
         self.graphics
-            .push_square(self.player.pos, self.player.width, self.player.color);
+            .push_square(self.player.pos, self.player.width, self.player.color, 0.0);
     }
 
     pub fn update(&mut self) -> Result<(), wgpu::SurfaceError> {
-        // self.push_player();
-        let line = Line {
-            start: [0.0, 0.0],
-            end: [0.5, 0.8],
-            width:0.05,
-        };
-        self.graphics.push_line(line);
+        self.graphics
+            .push_square([0.0, 0.0], 0.1, [0.0, 0.0, 255.0], 365.0);
+
         let err = self.graphics.draw();
         self.graphics.clear();
         err
