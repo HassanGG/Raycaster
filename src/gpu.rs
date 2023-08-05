@@ -1,6 +1,6 @@
 use crate::vertex;
 use vertex::{Vertex, INDICES, VERTICES};
-use wgpu::util::DeviceExt;
+use wgpu::{util::DeviceExt, RenderPass};
 use winit::{event::*, window::Window};
 
 pub struct WGPUState {
@@ -11,10 +11,13 @@ pub struct WGPUState {
     pub size: winit::dpi::PhysicalSize<u32>,
     window: Window,
     render_pipeline: wgpu::RenderPipeline,
-    vertex_buffer: wgpu::Buffer,
-    num_vertices: u32,
-    index_buffer: wgpu::Buffer,
-    pub num_indices: u32,
+    line_render_pipeline: wgpu::RenderPipeline,
+    line_vertex_buffer: wgpu::Buffer,
+    line_num_vertices: u32,
+    tri_vertex_buffer: wgpu::Buffer,
+    tri_num_vertices: u32,
+    tri_index_buffer: wgpu::Buffer,
+    pub tri_num_indices: u32,
     pub aspect_ratio: f32,
 }
 
@@ -24,7 +27,8 @@ const MAX_INDICES: u64 = 6000;
 impl WGPUState {
     pub async fn new(window: Window) -> Self {
         let size = window.inner_size();
-        let num_vertices = VERTICES.len() as u32;
+        let num_vertices = 0;
+        let line_num_vertices = 0;
         let aspect_ratio = window.inner_size().height as f32 / window.inner_size().width as f32;
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
@@ -109,9 +113,44 @@ impl WGPUState {
             }),
 
             primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList, 
+                topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw, 
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+        });
+
+        let line_render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: "vs_main",
+                buffers: &[Vertex::desc()],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: "fs_main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::LineList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
                 cull_mode: Some(wgpu::Face::Back),
                 // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
                 polygon_mode: wgpu::PolygonMode::Fill,
@@ -136,6 +175,13 @@ impl WGPUState {
             mapped_at_creation: false,
         });
 
+        let line_vertex_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("line_vertex_buffer"),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            size: std::mem::size_of::<Vertex>() as u64 * MAX_VERTICES,
+            mapped_at_creation: false,
+        });
+
         let index_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("index_buffer"),
             usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
@@ -153,10 +199,13 @@ impl WGPUState {
             config,
             size,
             render_pipeline,
-            vertex_buffer,
-            num_vertices,
-            index_buffer,
-            num_indices,
+            line_render_pipeline,
+            tri_vertex_buffer: vertex_buffer,
+            tri_num_vertices: num_vertices,
+            tri_index_buffer: index_buffer,
+            tri_num_indices: num_indices,
+            line_vertex_buffer,
+            line_num_vertices,
         }
     }
 
@@ -181,15 +230,22 @@ impl WGPUState {
         }
     }
 
-    pub fn update(&mut self, vertices: &[Vertex], indices: &[u16]) {
-        self.num_indices = indices.len() as u32;
-        self.num_vertices = vertices.len() as u32;
+    pub fn update_line(&mut self, vertices: &[Vertex]) {
+        self.line_num_vertices = vertices.len() as u32;
 
         self.queue
-            .write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(vertices));
+            .write_buffer(&self.line_vertex_buffer, 0, bytemuck::cast_slice(vertices));
+    }
+
+    pub fn update_tri(&mut self, vertices: &[Vertex], indices: &[u16]) {
+        self.tri_num_indices = indices.len() as u32;
+        self.tri_num_vertices = vertices.len() as u32;
 
         self.queue
-            .write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(indices));
+            .write_buffer(&self.tri_vertex_buffer, 0, bytemuck::cast_slice(vertices));
+
+        self.queue
+            .write_buffer(&self.tri_index_buffer, 0, bytemuck::cast_slice(indices));
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -225,14 +281,32 @@ impl WGPUState {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+            render_pass.set_vertex_buffer(0, self.tri_vertex_buffer.slice(..));
+            render_pass.set_index_buffer(self.tri_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.draw_indexed(0..self.tri_num_indices, 0, 0..1);
+        }
+
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Line Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: true,
+                    },
+                })],
+                depth_stencil_attachment: None,
+            });
+
+            render_pass.set_pipeline(&self.line_render_pipeline);
+            render_pass.set_vertex_buffer(0, self.line_vertex_buffer.slice(..));
+            render_pass.draw(0..self.line_num_vertices, 0..1);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
-
         Ok(())
     }
 }

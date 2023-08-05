@@ -6,6 +6,7 @@ pub struct Graphics {
     pub gpu_state: WGPUState,
     vertices: Vec<Vertex>,
     indices: Vec<u16>,
+    lines: Vec<Vertex>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -20,7 +21,11 @@ pub struct Rect {
 pub struct Line {
     pub start: [f32; 2],
     pub end: [f32; 2],
-    pub width: f32,
+}
+impl Line {
+    pub fn new(start: [f32; 2], end: [f32; 2]) -> Self {
+        Self { start, end }
+    }
 }
 
 impl Graphics {
@@ -28,6 +33,7 @@ impl Graphics {
         Self {
             gpu_state,
             vertices: Vec::with_capacity(4000),
+            lines: Vec::with_capacity(4000),
             indices: Vec::with_capacity(6000),
         }
     }
@@ -59,45 +65,17 @@ impl Graphics {
         self.push_rect(square, color, rotation);
     }
 
-    pub fn push_line(&mut self, line: Line) {
-        let w = line.width / 2.0;
-
-        let x1 = line.start[0];
-        let x2 = line.end[0];
-        let y1 = line.start[1];
-        let y2 = line.end[1];
-
-        let color: [f32; 3] = [1.0, 1.0, 1.0];
-
-        let dx = x2 - x1;
-        let dy = y2 - y1;
-        let l = dx.hypot(dy);
-        let u = dx * line.width * 0.5 / l;
-        let v = dy * line.width * 0.5 / l;
-
-        self.vertices.push(Vertex {
-            position: [x1 + v, y1 - u],
-            color,
-        });
-        self.vertices.push(Vertex {
-            position: [x1 - v, y1 + u],
-            color,
-        });
-        self.vertices.push(Vertex {
-            position: [x2 - v, y2 + u],
-            color,
-        });
-        self.vertices.push(Vertex {
-            position: [x2 + v, y2 - u],
-            color,
-        });
-
-        self.indices.push(1);
-        self.indices.push(2);
-        self.indices.push(0);
-        self.indices.push(2);
-        self.indices.push(0);
-        self.indices.push(3);
+    pub fn push_line(&mut self, line: Line, color: [f32; 3]) {
+        self.lines.extend_from_slice(&[
+            Vertex {
+                position: line.start,
+                color,
+            },
+            Vertex {
+                position: line.end,
+                color,
+            },
+        ]);
     }
 
     fn rotate_square(&self, rect: &mut Rect, rotation: f32) {
@@ -152,7 +130,8 @@ impl Graphics {
 
     pub fn draw(&mut self) -> Result<(), wgpu::SurfaceError> {
         self.gpu_state
-            .update(self.vertices.as_slice(), self.indices.as_slice());
-        return self.gpu_state.render();
+            .update_tri(self.vertices.as_slice(), self.indices.as_slice());
+        self.gpu_state.update_line(self.lines.as_slice());
+        self.gpu_state.render()
     }
 }

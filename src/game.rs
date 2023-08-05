@@ -29,8 +29,8 @@ impl Game {
 
     pub fn update(&mut self) -> Result<(), wgpu::SurfaceError> {
         self.graphics
-            .push_square([0.0, 0.0], 0.1, [0.0, 0.0, 255.0], 365.0);
-
+            .push_square([0.0, 0.0], 0.1, [0.0, 0.0, 255.0], 46.0);
+        self.graphics.push_line(Line::new([0.4, 0.4], [0.5, 0.5]), [0.0, 255.0, 0.0]);
         let err = self.graphics.draw();
         self.graphics.clear();
         err
