@@ -1,5 +1,7 @@
 use crate::{
+    game::{GameMap, MAP_SIZE, WALL_WIDTH},
     gpu::{WGPUState, MAX_INDICES, MAX_VERTICES},
+    util::convert_range,
     vertex::Vertex,
 };
 
@@ -26,7 +28,7 @@ pub struct Rect {
 }
 
 #[derive(Debug)]
-pub struct Direction {
+pub struct Ray {
     pub origin: [f32; 2],
     pub length: f32,
     pub rotation: f32,
@@ -36,6 +38,60 @@ pub struct Direction {
 pub struct Line {
     pub start: [f32; 2],
     pub end: [f32; 2],
+}
+
+impl Ray {
+    pub fn get_collision(&mut self, map: GameMap, march: f32) -> [f32; 2] {
+        let mut collided = self.get_collided(map);
+
+        let max_iter = 30;
+        let mut i = 0;
+        while collided.is_none() && i < max_iter {
+            let rad = self.rotation.to_radians();
+            let hypot = march;
+
+            let x = self.origin[0] - hypot * rad.sin();
+            let y = self.origin[1] + hypot * rad.cos();
+            self.origin = [x, y];
+
+            collided = self.get_collided(map);
+            i += 1
+        }
+
+        println!("{:#?}", self.origin);
+        self.origin
+    }
+
+    fn is_collided(&self, i: usize, j: usize) -> bool {
+        let mut x_min = WALL_WIDTH * j as f32;
+        let mut x_max = (WALL_WIDTH * j as f32) + WALL_WIDTH;
+        let mut y_min = WALL_WIDTH * i as f32;
+        let mut y_max = (WALL_WIDTH * i as f32) + WALL_WIDTH;
+
+        x_min = convert_range(x_min, [0.0, 2.0], [-1.0, 1.0]);
+        y_min = convert_range(y_min, [0.0, 2.0], [-1.0, 1.0]);
+        y_max = convert_range(y_max, [0.0, 2.0], [-1.0, 1.0]);
+        x_max = convert_range(x_max, [0.0, 2.0], [-1.0, 1.0]);
+
+        self.origin[0] <= x_max
+            && self.origin[0] >= x_min
+            && self.origin[1] <= y_max
+            && self.origin[1] >= y_min
+    }
+
+    fn get_collided(&self, map: GameMap) -> Option<[f32; 2]> {
+        for i in 0..map.len() {
+            for j in 0..map[0].len() {
+                if map[i][j] == 1 {
+                    if self.is_collided(i, j) {
+                        return Some([i as f32, j as f32]);
+                    }
+                }
+            }
+        }
+
+        None
+    }
 }
 
 impl Line {
@@ -123,20 +179,14 @@ impl Graphics {
         self.push_rect(square, color);
     }
 
-    pub fn push_direction(
-        &mut self,
-        origin: [f32; 2],
-        length: f32,
-        rotation: f32,
-        color: [f32; 3],
-    ) {
+    pub fn push_ray(&mut self, ray: Ray, color: [f32; 3]) {
         let mut line = Line {
             start: [0.0, 0.0],
-            end: [0.0, 0.0 + length],
+            end: [0.0, 0.0 + ray.length],
         };
 
-        line.rotate(rotation);
-        line.translate(origin[0], origin[1]);
+        line.rotate(ray.rotation);
+        line.translate(ray.origin[0], ray.origin[1]);
 
         self.push_line(line, color);
     }

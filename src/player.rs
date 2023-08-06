@@ -1,14 +1,15 @@
-use crate::{game::{GameMap, WALL_WIDTH, MOVE_AMOUNT}, graphics::{Line, Direction}};
+use crate::{game::{GameMap, WALL_WIDTH, MOVE_AMOUNT}, graphics::{Line, Ray}};
 
 #[derive(Debug)]
 pub struct Player {
     pub pos: [f32; 2],
     pub width: f32,
     pub rotation: f32,
-    pub view: Direction,
+    pub view: Ray,
+
 }
 
-pub const LINE_LENGTH: f32 = 0.1;
+pub const LINE_LENGTH: f32 = 0.05;
 impl Player {
     fn validate_move(&mut self, x: f32, y: f32, map: GameMap) -> bool {
         let n = map.len();

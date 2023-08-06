@@ -1,8 +1,11 @@
+use std::f32::consts::PI;
+
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
 
 use crate::{
-    graphics::{self, Direction, Graphics, Line, Rect},
+    graphics::{self, Graphics, Line, Ray, Rect},
     player::{Player, LINE_LENGTH},
+    util::convert_range,
 };
 
 pub const MOVE_AMOUNT: f32 = 0.01;
@@ -12,6 +15,7 @@ pub const GAME_WIDTH: usize = 2;
 pub const WALL_COLOR: [f32; 3] = [255.0, 255.0, 255.0];
 pub const WALL_WIDTH: f32 = GAME_WIDTH as f32 / MAP_SIZE as f32;
 pub const PLAYER_COLOR: [f32; 3] = [0.0, 255.0, 0.0];
+pub const PLAYER_WIDTH: f32 = 0.03;
 pub type GameMap = [[u8; MAP_SIZE]; MAP_SIZE];
 
 pub struct Game {
@@ -23,8 +27,8 @@ pub struct Game {
 impl Game {
     pub fn new(graphics: Graphics) -> Self {
         let pos = [0.0, 0.0];
-        let width = 0.1;
-        let view = Direction {
+        let width = PLAYER_WIDTH;
+        let view = Ray {
             origin: pos,
             rotation: 0.0,
             length: LINE_LENGTH,
@@ -101,6 +105,9 @@ impl Game {
                     ..
                 } => {
                     self.player.rotation -= ROTATE_AMOUNT;
+                    if self.player.rotation < 0.0 {
+                        self.player.rotation = 360.0 - ROTATE_AMOUNT;
+                    }
                     self.player.rotation %= 360.0;
                     true
                 }
@@ -119,6 +126,27 @@ impl Game {
             _ => false,
         }
     }
+
+    fn draw_rays(&mut self) {
+        for deg in (-45..=45).step_by(10) {
+            let mut ray = Ray {
+                rotation: self.player.rotation + deg as f32,
+                origin: self.player.pos,
+                length: 0.0,
+            };
+            let end = ray.get_collision(self.map, 0.05);
+
+            let color = [255.0, 0.0, 255.0];
+            self.graphics.push_line(
+                Line {
+                    start: self.player.pos,
+                    end,
+                },
+                color,
+            );
+        }
+    }
+
     fn push_player(&mut self) {
         self.graphics.push_square(
             self.player.pos,
@@ -127,20 +155,22 @@ impl Game {
             self.player.rotation,
         );
 
-        self.graphics.push_direction(
-            self.player.pos,
-            LINE_LENGTH,
-            self.player.rotation,
+        self.graphics.push_ray(
+            Ray {
+                origin: self.player.pos,
+                length: LINE_LENGTH,
+                rotation: self.player.rotation,
+            },
             PLAYER_COLOR,
         );
     }
 
     pub fn update(&mut self) -> Result<(), wgpu::SurfaceError> {
         self.draw_map();
+        self.draw_rays();
         self.push_player();
         let err = self.graphics.draw();
         self.graphics.clear();
         err
     }
 }
-
