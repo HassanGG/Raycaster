@@ -25,6 +25,13 @@ pub struct Rect {
     pub width: f32,
 }
 
+#[derive(Debug)]
+pub struct Direction {
+    pub origin: [f32; 2],
+    pub length: f32,
+    pub rotation: f32,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Line {
     pub start: [f32; 2],
@@ -34,6 +41,25 @@ pub struct Line {
 impl Line {
     pub fn new(start: [f32; 2], end: [f32; 2]) -> Self {
         Self { start, end }
+    }
+    pub fn rotate(&mut self, rotation: f32) {
+        let rad = rotation.to_radians();
+        let rotate_point = |x: f32, y: f32| -> [f32; 2] {
+            [
+                x * f32::cos(rad) - y * f32::sin(rad),
+                x * f32::sin(rad) + y * f32::cos(rad),
+            ]
+        };
+
+        self.start = rotate_point(self.start[0], self.start[1]);
+        self.end = rotate_point(self.end[0], self.end[1]);
+    }
+
+    pub fn translate(&mut self, x: f32, y: f32) {
+        let t_point = |p: [f32; 2]| -> [f32; 2] { [p[0] + x, p[1] + y] };
+
+        self.start = t_point(self.start);
+        self.end = t_point(self.end);
     }
 }
 
@@ -95,6 +121,24 @@ impl Graphics {
             rotation,
         };
         self.push_rect(square, color);
+    }
+
+    pub fn push_direction(
+        &mut self,
+        origin: [f32; 2],
+        length: f32,
+        rotation: f32,
+        color: [f32; 3],
+    ) {
+        let mut line = Line {
+            start: [0.0, 0.0],
+            end: [0.0, 0.0 + length],
+        };
+
+        line.rotate(rotation);
+        line.translate(origin[0], origin[1]);
+
+        self.push_line(line, color);
     }
 
     pub fn push_line(&mut self, line: Line, color: [f32; 3]) {

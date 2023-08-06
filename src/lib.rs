@@ -5,6 +5,7 @@ mod game;
 mod gpu;
 mod graphics;
 mod vertex;
+mod player;
 
 use gpu::WGPUState;
 
