@@ -1,4 +1,7 @@
-use crate::{gpu::WGPUState, vertex::Vertex};
+use crate::{
+    gpu::{WGPUState, MAX_INDICES, MAX_VERTICES},
+    vertex::Vertex,
+};
 
 pub struct Graphics {
     pub gpu_state: WGPUState,
@@ -36,12 +39,7 @@ impl Line {
 
 impl Quad {
     pub fn translate(&mut self, x: f32, y: f32) {
-        let t_point = |p: [f32; 2]| -> [f32; 2] {
-            [
-                p[0] + x,
-                p[1] + y,
-            ]
-        };
+        let t_point = |p: [f32; 2]| -> [f32; 2] { [p[0] + x, p[1] + y] };
 
         self.tr = t_point(self.tr);
         self.bl = t_point(self.bl);
@@ -68,21 +66,22 @@ impl Graphics {
     pub fn new(gpu_state: WGPUState) -> Self {
         Self {
             gpu_state,
-            vertices: Vec::with_capacity(4000),
-            lines: Vec::with_capacity(4000),
-            indices: Vec::with_capacity(6000),
+            vertices: Vec::with_capacity(MAX_VERTICES as usize),
+            lines: Vec::with_capacity(MAX_VERTICES as usize),
+            indices: Vec::with_capacity(MAX_INDICES as usize),
         }
     }
 
     pub fn clear(&mut self) {
         self.indices.clear();
+        self.lines.clear();
         self.vertices.clear();
     }
 
     fn offset(&self) -> u16 {
         let length = self.vertices.len() as u16;
         if length > 0 {
-            length - 1
+            length
         } else {
             0
         }
@@ -99,13 +98,15 @@ impl Graphics {
     }
 
     pub fn push_line(&mut self, line: Line, color: [f32; 3]) {
+        let ap = self.gpu_state.aspect_ratio;
+
         self.lines.extend_from_slice(&[
             Vertex {
-                position: line.start,
+                position: [line.start[0] * ap, line.start[1]],
                 color,
             },
             Vertex {
-                position: line.end,
+                position: [line.end[0] * ap, line.end[1]],
                 color,
             },
         ]);

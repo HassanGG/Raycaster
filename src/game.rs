@@ -2,9 +2,16 @@ use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
 
 use crate::graphics::{self, Graphics, Line, Rect};
 
+const MOVE_AMOUNT: f32 = 0.01;
+const ROTATE_AMOUNT: f32 = 10.0;
+const MAP_SIZE: usize = 10;
+const GAME_WIDTH: usize = 2;
+const WALL_COLOR: [f32; 3] = [255.0, 255.0, 255.0];
+
 pub struct Game {
     pub graphics: Graphics,
     player: Player,
+    map: [[u8; MAP_SIZE]; MAP_SIZE],
 }
 
 #[derive(Debug)]
@@ -33,9 +40,6 @@ impl Player {
     }
 }
 
-const MOVE_AMOUNT: f32 = 0.01;
-const ROTATE_AMOUNT: f32 = 8.0;
-
 impl Game {
     pub fn new(graphics: Graphics) -> Self {
         let player = Player {
@@ -45,10 +49,45 @@ impl Game {
             rotation: 0.0,
         };
 
-        Self { graphics, player }
+        let map = [
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 1, 1, 0, 0, 0, 0, 0, 1],
+            [1, 0, 1, 1, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        ];
+
+        Self {
+            graphics,
+            player,
+            map,
+        }
     }
 
-    fn draw_map(&mut self) {}
+    fn draw_map(&mut self) {
+        let wall_width = GAME_WIDTH as f32 / MAP_SIZE as f32;
+        let n = self.map.len();
+        for i in (0..n) {
+            for j in (0..n) {
+                if self.map[i][j] == 1 {
+                    let origin = [
+                        (i as f32 * wall_width) + (wall_width / 2.0) - 1.0,
+                        (j as f32 * wall_width) + (wall_width / 2.0) - 1.0,
+                    ];
+                    let width = wall_width - 0.01;
+                    let color = WALL_COLOR;
+                    let rotation = 0.0;
+
+                    self.graphics.push_square(origin, width, color, rotation)
+                }
+            }
+        }
+    }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
         match event {
@@ -58,7 +97,6 @@ impl Game {
                     virtual_keycode: Some(VirtualKeyCode::Up),
                     ..
                 } => {
-                    // self.player.pos[1] += MOVE_AMOUNT;
                     self.player.move_forward();
                     true
                 }
@@ -103,6 +141,7 @@ impl Game {
     }
 
     pub fn update(&mut self) -> Result<(), wgpu::SurfaceError> {
+        self.draw_map();
         self.push_player();
         let err = self.graphics.draw();
         self.graphics.clear();

@@ -20,8 +20,8 @@ pub struct WGPUState {
     pub aspect_ratio: f32,
 }
 
-const MAX_VERTICES: u64 = 4000;
-const MAX_INDICES: u64 = 6000;
+pub const MAX_VERTICES: u64 = 4000;
+pub const MAX_INDICES: u64 = 6000;
 
 impl WGPUState {
     pub async fn new(window: Window) -> Self {
