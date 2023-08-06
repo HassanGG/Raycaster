@@ -101,6 +101,7 @@ impl Game {
                     ..
                 } => {
                     self.player.rotation -= ROTATE_AMOUNT;
+                    self.player.rotation %= 360.0;
                     true
                 }
                 KeyboardInput {
@@ -109,6 +110,7 @@ impl Game {
                     ..
                 } => {
                     self.player.rotation += ROTATE_AMOUNT;
+                    self.player.rotation %= 360.0;
                     true
                 }
 
