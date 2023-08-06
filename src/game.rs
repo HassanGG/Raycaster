@@ -7,11 +7,13 @@ const ROTATE_AMOUNT: f32 = 10.0;
 const MAP_SIZE: usize = 10;
 const GAME_WIDTH: usize = 2;
 const WALL_COLOR: [f32; 3] = [255.0, 255.0, 255.0];
+const WALL_WIDTH: f32 = GAME_WIDTH as f32 / MAP_SIZE as f32;
+type Map = [[u8; MAP_SIZE]; MAP_SIZE];
 
 pub struct Game {
     pub graphics: Graphics,
     player: Player,
-    map: [[u8; MAP_SIZE]; MAP_SIZE],
+    map: Map,
 }
 
 #[derive(Debug)]
@@ -23,20 +25,76 @@ struct Player {
 }
 
 impl Player {
-    pub fn move_forward(&mut self) {
+    fn validate_move(&mut self, x: f32, y: f32, map: Map) -> bool {
+        let n = map.len();
+        for i in (0..n) {
+            for j in (0..n) {
+                if map[i][j] == 1 {
+                    let (beg_x, end_x) = (
+                        i as f32 * WALL_WIDTH - 1.0,
+                        (i as f32 + 1.0) * WALL_WIDTH - 1.0,
+                    );
+                    let (beg_y, end_y) = (
+                        j as f32 * WALL_WIDTH - 1.0,
+                        (j as f32 + 1.0) * WALL_WIDTH - 1.0,
+                    );
+                    let h_p_width = (self.width - 0.05) / 2.0;
+                    if x + h_p_width < end_x
+                        && x + h_p_width > beg_x
+                        && y + h_p_width > beg_y
+                        && y + h_p_width < end_y
+                    {
+                        return false;
+                    }
+                    if x - h_p_width < end_x
+                        && x - h_p_width > beg_x
+                        && y - h_p_width > beg_y
+                        && y - h_p_width < end_y
+                    {
+                        return false;
+                    }
+                    if x + h_p_width < end_x
+                        && x + h_p_width > beg_x
+                        && y - h_p_width > beg_y
+                        && y - h_p_width < end_y
+                    {
+                        return false;
+                    }
+                    if x - h_p_width < end_x
+                        && x - h_p_width > beg_x
+                        && y + h_p_width > beg_y
+                        && y + h_p_width < end_y
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        true
+    }
+    pub fn move_forward(&mut self, map: Map) {
         let rad = self.rotation.to_radians();
         let hypot = MOVE_AMOUNT;
 
-        self.pos[0] -= hypot * rad.sin();
-        self.pos[1] += hypot * rad.cos();
+        let x = self.pos[0] - hypot * rad.sin();
+        let y = self.pos[1] + hypot * rad.cos();
+        if self.validate_move(x, y, map) {
+            self.pos[0] = x;
+            self.pos[1] = y;
+        }
     }
 
-    pub fn move_backward(&mut self) {
+    pub fn move_backward(&mut self, map: Map) {
         let rad = self.rotation.to_radians();
         let hypot = MOVE_AMOUNT;
 
-        self.pos[0] += hypot * rad.sin();
-        self.pos[1] -= hypot * rad.cos();
+        let x = self.pos[0] + hypot * rad.sin();
+        let y = self.pos[1] - hypot * rad.cos();
+        if self.validate_move(x, y, map) {
+            self.pos[0] = x;
+            self.pos[1] = y;
+        }
     }
 }
 
@@ -70,16 +128,15 @@ impl Game {
     }
 
     fn draw_map(&mut self) {
-        let wall_width = GAME_WIDTH as f32 / MAP_SIZE as f32;
         let n = self.map.len();
         for i in (0..n) {
             for j in (0..n) {
                 if self.map[i][j] == 1 {
                     let origin = [
-                        (i as f32 * wall_width) + (wall_width / 2.0) - 1.0,
-                        (j as f32 * wall_width) + (wall_width / 2.0) - 1.0,
+                        (i as f32 * WALL_WIDTH) + (WALL_WIDTH / 2.0) - 1.0,
+                        (j as f32 * WALL_WIDTH) + (WALL_WIDTH / 2.0) - 1.0,
                     ];
-                    let width = wall_width - 0.01;
+                    let width = WALL_WIDTH - 0.01;
                     let color = WALL_COLOR;
                     let rotation = 0.0;
 
@@ -97,7 +154,7 @@ impl Game {
                     virtual_keycode: Some(VirtualKeyCode::Up),
                     ..
                 } => {
-                    self.player.move_forward();
+                    self.player.move_forward(self.map);
                     true
                 }
                 KeyboardInput {
@@ -105,7 +162,7 @@ impl Game {
                     virtual_keycode: Some(VirtualKeyCode::Down),
                     ..
                 } => {
-                    self.player.move_backward();
+                    self.player.move_backward(self.map);
                     true
                 }
 
