@@ -4,9 +4,9 @@ use wasm_bindgen::prelude::*;
 mod game;
 mod gpu;
 mod graphics;
-mod vertex;
 mod player;
 mod util;
+mod vertex;
 
 use gpu::WGPUState;
 
@@ -18,7 +18,7 @@ use winit::{
 
 use crate::graphics::Graphics;
 
-const WINDOW_SIZE: winit::dpi::PhysicalSize<i32> = winit::dpi::PhysicalSize::new(800, 800);
+const WINDOW_SIZE: winit::dpi::PhysicalSize<i32> = winit::dpi::PhysicalSize::new(1600, 800);
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {

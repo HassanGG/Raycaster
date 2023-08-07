@@ -22,12 +22,15 @@ pub struct Game {
     pub graphics: Graphics,
     player: Player,
     map: GameMap,
+    ray_lengths: Vec<f32>,
 }
 
 impl Game {
     pub fn new(graphics: Graphics) -> Self {
-        let pos = [0.0, 0.0];
+        let mut pos = [0.0, 0.0];
+        pos[0] = convert_range(pos[0], [-1.0, 1.0], [-1.0, 0.0]);
         let width = PLAYER_WIDTH;
+        let ray_lengths: Vec<f32> = vec![];
         let view = Ray {
             origin: pos,
             rotation: 0.0,
@@ -57,6 +60,7 @@ impl Game {
             graphics,
             player,
             map,
+            ray_lengths,
         }
     }
 
@@ -128,13 +132,23 @@ impl Game {
     }
 
     fn draw_rays(&mut self) {
-        for deg in (-45..=45).step_by(10) {
+        for mut deg in (-45..=45).step_by(1) {
+            let angle = deg as f32 / 2.0;
             let mut ray = Ray {
-                rotation: self.player.rotation + deg as f32,
+                rotation: self.player.rotation + angle as f32,
                 origin: self.player.pos,
                 length: 0.0,
             };
+
             let end = ray.get_collision(self.map, 0.05);
+            let start = self.player.pos;
+
+            let mut ray_length =
+                f32::sqrt((f32::powi(end[0] - start[0], 2)) + f32::powi((end[1] - start[1]), 2));
+
+            let angle = self.player.rotation.to_radians() - ray.rotation.to_radians();
+            ray_length = ray_length * (angle as f32).cos();
+            self.ray_lengths.push(ray_length);
 
             let color = [255.0, 0.0, 255.0];
             self.graphics.push_line(
@@ -144,6 +158,24 @@ impl Game {
                 },
                 color,
             );
+        }
+        println!("{:#?}", self.ray_lengths);
+    }
+
+    fn draw_walls(&mut self) {
+        let n = self.ray_lengths.len();
+        let column_width = GAME_WIDTH as f32 / n as f32;
+        let color = [255.0, 0.0, 0.0];
+
+        for i in 0..n {
+            let height = 2.0 - *self.ray_lengths.get(i).unwrap_or(&0.0);
+            let rect = Rect {
+                origin: [-1.0 + (column_width * i as f32), 0.0],
+                rotation: 0.0,
+                height: 2.0 - *self.ray_lengths.get(i).unwrap(),
+                width: column_width,
+            };
+            self.graphics.push_rect_right(rect, color)
         }
     }
 
@@ -169,8 +201,10 @@ impl Game {
         self.draw_map();
         self.draw_rays();
         self.push_player();
+        self.draw_walls();
         let err = self.graphics.draw();
         self.graphics.clear();
+        self.ray_lengths.clear();
         err
     }
 }

@@ -58,7 +58,6 @@ impl Ray {
             i += 1
         }
 
-        println!("{:#?}", self.origin);
         self.origin
     }
 
@@ -191,40 +190,47 @@ impl Graphics {
         self.push_line(line, color);
     }
 
-    pub fn push_line(&mut self, line: Line, color: [f32; 3]) {
+    pub fn push_line(&mut self, mut line: Line, color: [f32; 3]) {
         let ap = self.gpu_state.aspect_ratio;
+        line.start[0] = convert_range(line.start[0], [-1.0, 1.0], [-1.0, 0.0]);
+        line.end[0] = convert_range(line.end[0], [-1.0, 1.0], [-1.0, 0.0]);
 
         self.lines.extend_from_slice(&[
             Vertex {
-                position: [line.start[0] * ap, line.start[1]],
+                position: [line.start[0], line.start[1]],
                 color,
             },
             Vertex {
-                position: [line.end[0] * ap, line.end[1]],
+                position: [line.end[0], line.end[1]],
                 color,
             },
         ]);
     }
 
-    fn push_quad(&mut self, quad: Quad, color: [f32; 3]) {
+    fn push_quad(&mut self, mut quad: Quad, color: [f32; 3]) {
         let offset = self.offset();
         let ap = self.gpu_state.aspect_ratio;
 
+        quad.tl[0] = convert_range(quad.tl[0], [-1.0, 1.0], [-1.0, 0.0]);
+        quad.tr[0] = convert_range(quad.tr[0], [-1.0, 1.0], [-1.0, 0.0]);
+        quad.bl[0] = convert_range(quad.bl[0], [-1.0, 1.0], [-1.0, 0.0]);
+        quad.br[0] = convert_range(quad.br[0], [-1.0, 1.0], [-1.0, 0.0]);
+
         self.vertices.extend_from_slice(&[
             Vertex {
-                position: [quad.tl[0] * ap, quad.tl[1]],
+                position: [quad.tl[0], quad.tl[1]],
                 color,
             },
             Vertex {
-                position: [quad.bl[0] * ap, quad.bl[1]],
+                position: [quad.bl[0], quad.bl[1]],
                 color,
             },
             Vertex {
-                position: [quad.br[0] * ap, quad.br[1]],
+                position: [quad.br[0], quad.br[1]],
                 color,
             },
             Vertex {
-                position: [quad.tr[0] * ap, quad.tr[1]],
+                position: [quad.tr[0], quad.tr[1]],
                 color,
             },
         ]);
@@ -239,6 +245,59 @@ impl Graphics {
         ]);
     }
 
+    pub fn push_rect_right(&mut self, rect: Rect, color: [f32; 3]) {
+        let hw = rect.width / 2.0;
+        let hh = rect.height / 2.0;
+
+        let mut quad = Quad {
+            tl: [-hw, hh],
+            bl: [-hw, -hh],
+            br: [hw, -hh],
+            tr: [hw, hh],
+        };
+
+        quad.rotate(rect.rotation);
+        quad.translate(rect.origin[0], rect.origin[1]);
+        self.push_quad_right(quad, color);
+    }
+
+    fn push_quad_right(&mut self, mut quad: Quad, color: [f32; 3]) {
+        let offset = self.offset();
+        let ap = self.gpu_state.aspect_ratio;
+
+        quad.tl[0] = convert_range(quad.tl[0], [-1.0, 1.0], [0.0, 1.0]);
+        quad.tr[0] = convert_range(quad.tr[0], [-1.0, 1.0], [0.0, 1.0]);
+        quad.bl[0] = convert_range(quad.bl[0], [-1.0, 1.0], [0.0, 1.0]);
+        quad.br[0] = convert_range(quad.br[0], [-1.0, 1.0], [0.0, 1.0]);
+
+        self.vertices.extend_from_slice(&[
+            Vertex {
+                position: [quad.tl[0], quad.tl[1]],
+                color,
+            },
+            Vertex {
+                position: [quad.bl[0], quad.bl[1]],
+                color,
+            },
+            Vertex {
+                position: [quad.br[0], quad.br[1]],
+                color,
+            },
+            Vertex {
+                position: [quad.tr[0], quad.tr[1]],
+                color,
+            },
+        ]);
+
+        self.indices.extend_from_slice(&[
+            0 + offset,
+            1 + offset,
+            2 + offset,
+            3 + offset,
+            0 + offset,
+            2 + offset,
+        ]);
+    }
     pub fn push_rect(&mut self, rect: Rect, color: [f32; 3]) {
         let hw = rect.width / 2.0;
         let hh = rect.height / 2.0;
