@@ -1,4 +1,4 @@
-use crate::{game::{GameMap, WALL_WIDTH, MOVE_AMOUNT}, graphics::{Line, Ray}};
+use crate::{game::{GameMap, CELL_WIDTH, MOVE_AMOUNT}, ray::Ray};
 
 #[derive(Debug)]
 pub struct Player {
@@ -9,20 +9,21 @@ pub struct Player {
 
 }
 
+
 pub const LINE_LENGTH: f32 = 0.05;
 impl Player {
     fn validate_move(&mut self, x: f32, y: f32, map: GameMap) -> bool {
         let n = map.len();
-        for i in (0..n) {
-            for j in (0..n) {
+        for i in 0..n {
+            for j in 0..n {
                 if map[i][j] == 1 {
                     let (beg_x, end_x) = (
-                        i as f32 * WALL_WIDTH - 1.0,
-                        (i as f32 + 1.0) * WALL_WIDTH - 1.0,
+                        i as f32 * CELL_WIDTH - 1.0,
+                        (i as f32 + 1.0) * CELL_WIDTH - 1.0,
                     );
                     let (beg_y, end_y) = (
-                        j as f32 * WALL_WIDTH - 1.0,
-                        (j as f32 + 1.0) * WALL_WIDTH - 1.0,
+                        j as f32 * CELL_WIDTH - 1.0,
+                        (j as f32 + 1.0) * CELL_WIDTH - 1.0,
                     );
                     let h_p_width = (self.width - 0.05) / 2.0;
                     if x + h_p_width < end_x

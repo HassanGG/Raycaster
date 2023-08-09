@@ -1,8 +1,7 @@
 use crate::{
-    game::{GameMap, MAP_SIZE, WALL_WIDTH},
     gpu::{WGPUState, MAX_INDICES, MAX_VERTICES},
     util::convert_range,
-    vertex::Vertex,
+    vertex::Vertex, ray::Ray,
 };
 
 pub struct Graphics {
@@ -27,12 +26,6 @@ pub struct Rect {
     pub width: f32,
 }
 
-#[derive(Debug)]
-pub struct Ray {
-    pub origin: [f32; 2],
-    pub length: f32,
-    pub rotation: f32,
-}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Line {
@@ -40,63 +33,7 @@ pub struct Line {
     pub end: [f32; 2],
 }
 
-impl Ray {
-    pub fn get_collision(&mut self, map: GameMap, march: f32) -> [f32; 2] {
-        let mut collided = self.get_collided(map);
-
-        let max_iter = 30;
-        let mut i = 0;
-        while collided.is_none() && i < max_iter {
-            let rad = self.rotation.to_radians();
-            let hypot = march;
-
-            let x = self.origin[0] - hypot * rad.sin();
-            let y = self.origin[1] + hypot * rad.cos();
-            self.origin = [x, y];
-
-            collided = self.get_collided(map);
-            i += 1
-        }
-
-        self.origin
-    }
-
-    fn is_collided(&self, i: usize, j: usize) -> bool {
-        let mut x_min = WALL_WIDTH * j as f32;
-        let mut x_max = (WALL_WIDTH * j as f32) + WALL_WIDTH;
-        let mut y_min = WALL_WIDTH * i as f32;
-        let mut y_max = (WALL_WIDTH * i as f32) + WALL_WIDTH;
-
-        x_min = convert_range(x_min, [0.0, 2.0], [-1.0, 1.0]);
-        y_min = convert_range(y_min, [0.0, 2.0], [-1.0, 1.0]);
-        y_max = convert_range(y_max, [0.0, 2.0], [-1.0, 1.0]);
-        x_max = convert_range(x_max, [0.0, 2.0], [-1.0, 1.0]);
-
-        self.origin[0] <= x_max
-            && self.origin[0] >= x_min
-            && self.origin[1] <= y_max
-            && self.origin[1] >= y_min
-    }
-
-    fn get_collided(&self, map: GameMap) -> Option<[f32; 2]> {
-        for i in 0..map.len() {
-            for j in 0..map[0].len() {
-                if map[i][j] == 1 {
-                    if self.is_collided(i, j) {
-                        return Some([i as f32, j as f32]);
-                    }
-                }
-            }
-        }
-
-        None
-    }
-}
-
 impl Line {
-    pub fn new(start: [f32; 2], end: [f32; 2]) -> Self {
-        Self { start, end }
-    }
     pub fn rotate(&mut self, rotation: f32) {
         let rad = rotation.to_radians();
         let rotate_point = |x: f32, y: f32| -> [f32; 2] {
@@ -191,7 +128,6 @@ impl Graphics {
     }
 
     pub fn push_line(&mut self, mut line: Line, color: [f32; 3]) {
-        let ap = self.gpu_state.aspect_ratio;
         line.start[0] = convert_range(line.start[0], [-1.0, 1.0], [-1.0, 0.0]);
         line.end[0] = convert_range(line.end[0], [-1.0, 1.0], [-1.0, 0.0]);
 
@@ -209,7 +145,6 @@ impl Graphics {
 
     fn push_quad(&mut self, mut quad: Quad, color: [f32; 3]) {
         let offset = self.offset();
-        let ap = self.gpu_state.aspect_ratio;
 
         quad.tl[0] = convert_range(quad.tl[0], [-1.0, 1.0], [-1.0, 0.0]);
         quad.tr[0] = convert_range(quad.tr[0], [-1.0, 1.0], [-1.0, 0.0]);
@@ -263,7 +198,6 @@ impl Graphics {
 
     fn push_quad_right(&mut self, mut quad: Quad, color: [f32; 3]) {
         let offset = self.offset();
-        let ap = self.gpu_state.aspect_ratio;
 
         quad.tl[0] = convert_range(quad.tl[0], [-1.0, 1.0], [0.0, 1.0]);
         quad.tr[0] = convert_range(quad.tr[0], [-1.0, 1.0], [0.0, 1.0]);

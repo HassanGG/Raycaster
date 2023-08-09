@@ -1,19 +1,17 @@
-use std::f32::consts::PI;
-
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
 
+use crate::ray::Ray;
 use crate::{
-    graphics::{self, Graphics, Line, Ray, Rect},
+    graphics::{Graphics, Rect},
     player::{Player, LINE_LENGTH},
-    util::convert_range,
 };
 
 pub const MOVE_AMOUNT: f32 = 0.01;
 pub const ROTATE_AMOUNT: f32 = 10.0;
 pub const MAP_SIZE: usize = 10;
-pub const GAME_WIDTH: usize = 2;
+pub const COORD_WIDTH: usize = 2;
 pub const WALL_COLOR: [f32; 3] = [255.0, 255.0, 255.0];
-pub const WALL_WIDTH: f32 = GAME_WIDTH as f32 / MAP_SIZE as f32;
+pub const CELL_WIDTH: f32 = COORD_WIDTH as f32 / MAP_SIZE as f32;
 pub const PLAYER_COLOR: [f32; 3] = [0.0, 255.0, 0.0];
 pub const PLAYER_WIDTH: f32 = 0.03;
 pub type GameMap = [[u8; MAP_SIZE]; MAP_SIZE];
@@ -27,8 +25,7 @@ pub struct Game {
 
 impl Game {
     pub fn new(graphics: Graphics) -> Self {
-        let mut pos = [0.0, 0.0];
-        pos[0] = convert_range(pos[0], [-1.0, 1.0], [-1.0, 0.0]);
+        let pos = [0.0, 0.0];
         let width = PLAYER_WIDTH;
         let ray_lengths: Vec<f32> = vec![];
         let view = Ray {
@@ -49,13 +46,14 @@ impl Game {
             [1, 0, 1, 1, 0, 0, 0, 0, 0, 1],
             [1, 0, 1, 1, 0, 0, 0, 0, 0, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+            [1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
         ];
 
+        assert!(map.len() == MAP_SIZE);
         Self {
             graphics,
             player,
@@ -66,14 +64,14 @@ impl Game {
 
     fn draw_map(&mut self) {
         let n = self.map.len();
-        for i in (0..n) {
-            for j in (0..n) {
+        for i in 0..n {
+            for j in 0..n {
                 if self.map[i][j] == 1 {
                     let origin = [
-                        (i as f32 * WALL_WIDTH) + (WALL_WIDTH / 2.0) - 1.0,
-                        (j as f32 * WALL_WIDTH) + (WALL_WIDTH / 2.0) - 1.0,
+                        (i as f32 * CELL_WIDTH) + (CELL_WIDTH / 2.0) - 1.0,
+                        (j as f32 * CELL_WIDTH) + (CELL_WIDTH / 2.0) - 1.0,
                     ];
-                    let width = WALL_WIDTH - 0.01;
+                    let width = CELL_WIDTH - 0.01;
                     let color = WALL_COLOR;
                     let rotation = 0.0;
 
@@ -132,39 +130,30 @@ impl Game {
     }
 
     fn draw_rays(&mut self) {
-        for mut deg in (-45..=45).step_by(1) {
+        for deg in (-45..=45).step_by(1) {
             let angle = deg as f32 / 2.0;
-            let mut ray = Ray {
+            let ray = Ray {
                 rotation: self.player.rotation + angle as f32,
                 origin: self.player.pos,
                 length: 0.0,
             };
-
-            let end = ray.get_collision(self.map, 0.05);
-            let start = self.player.pos;
-
-            let mut ray_length =
-                f32::sqrt((f32::powi(end[0] - start[0], 2)) + f32::powi((end[1] - start[1]), 2));
-
-            let angle = self.player.rotation.to_radians() - ray.rotation.to_radians();
-            ray_length = ray_length * (angle as f32).cos();
+            let ray_length = ray.length_at_collision(self.map);
             self.ray_lengths.push(ray_length);
-
             let color = [255.0, 0.0, 255.0];
-            self.graphics.push_line(
-                Line {
-                    start: self.player.pos,
-                    end,
+            self.graphics.push_ray(
+                Ray {
+                    length: ray_length,
+                    origin: self.player.pos,
+                    rotation: self.player.rotation + angle,
                 },
                 color,
-            );
+            )
         }
-        println!("{:#?}", self.ray_lengths);
     }
 
     fn draw_walls(&mut self) {
         let n = self.ray_lengths.len();
-        let column_width = GAME_WIDTH as f32 / n as f32;
+        let column_width = COORD_WIDTH as f32 / n as f32;
         let color = [255.0, 0.0, 0.0];
 
         for i in 0..n {
@@ -172,7 +161,7 @@ impl Game {
             let rect = Rect {
                 origin: [-1.0 + (column_width * i as f32), 0.0],
                 rotation: 0.0,
-                height: 2.0 - *self.ray_lengths.get(i).unwrap(),
+                height,
                 width: column_width,
             };
             self.graphics.push_rect_right(rect, color)
@@ -186,15 +175,12 @@ impl Game {
             PLAYER_COLOR,
             self.player.rotation,
         );
-
-        self.graphics.push_ray(
-            Ray {
-                origin: self.player.pos,
-                length: LINE_LENGTH,
-                rotation: self.player.rotation,
-            },
-            PLAYER_COLOR,
-        );
+        let ray = Ray {
+            origin: self.player.pos,
+            length: LINE_LENGTH,
+            rotation: self.player.rotation,
+        };
+        self.graphics.push_ray(ray, PLAYER_COLOR);
     }
 
     pub fn update(&mut self) -> Result<(), wgpu::SurfaceError> {

@@ -2,6 +2,7 @@
 use wasm_bindgen::prelude::*;
 
 mod game;
+mod ray;
 mod gpu;
 mod graphics;
 mod player;
