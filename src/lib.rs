@@ -2,10 +2,10 @@
 use wasm_bindgen::prelude::*;
 
 mod game;
-mod ray;
 mod gpu;
 mod graphics;
 mod player;
+mod ray;
 mod util;
 mod vertex;
 
@@ -80,21 +80,10 @@ pub async fn run() {
         } if window_id == game.graphics.gpu_state.window().id() => {
             if !game.input(event) {
                 match event {
-                    WindowEvent::CloseRequested
-                    | WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
-                                ..
-                            },
-                        ..
-                    } => *control_flow = ControlFlow::Exit,
-
+                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                     WindowEvent::Resized(physical_size) => {
                         game.graphics.gpu_state.resize(*physical_size);
                     }
-
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                         game.graphics.gpu_state.resize(**new_inner_size);
                     }

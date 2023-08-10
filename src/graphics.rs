@@ -20,6 +20,7 @@ pub struct Quad {
     pub tr: [f32; 2],
 }
 
+#[derive(Clone, Copy)]
 pub struct Rect {
     pub origin: [f32; 2],
     pub rotation: f32,

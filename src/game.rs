@@ -1,6 +1,7 @@
-use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
+use winit::event::{ElementState, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent};
 
 use crate::ray::Ray;
+use crate::util::convert_range;
 use crate::{
     graphics::{Graphics, Rect},
     player::{Player, LINE_LENGTH},
@@ -10,9 +11,9 @@ use crate::{
 pub const MOVE_AMOUNT: f32 = 0.01;
 pub const ROTATE_AMOUNT: f32 = 10.0;
 pub const MAP_SIZE: usize = 10;
-pub const COORD_WIDTH: usize = 2;
+pub const COORD_SIZE: usize = 2;
 pub const WALL_COLOR: [f32; 3] = [255.0, 255.0, 255.0];
-pub const CELL_WIDTH: f32 = COORD_WIDTH as f32 / MAP_SIZE as f32;
+pub const CELL_WIDTH: f32 = COORD_SIZE as f32 / MAP_SIZE as f32;
 pub const PLAYER_COLOR: [f32; 3] = [0.0, 255.0, 0.0];
 pub const GROUND_COLOR: [f32; 3] = [0.1, 0.30, 0.0];
 pub const SKY_COLOR: [f32; 3] = [0.2, 0.4, 1.0];
@@ -26,6 +27,14 @@ pub struct Game {
     player: Player,
     map: GameMap,
     ray_data: Vec<(f32, Lighting)>,
+    mouse_location: [f32; 2],
+    mouse_left: bool,
+    mouse_right: bool,
+}
+
+enum HandleWall {
+    Destroy,
+    Create,
 }
 
 impl Game {
@@ -33,6 +42,9 @@ impl Game {
         let pos = [0.0, 0.0];
         let width = PLAYER_WIDTH;
         let ray_lengths: Vec<(f32, Lighting)> = vec![];
+        let mouse_location = [0.0, 0.0];
+        let mouse_left = false;
+        let mouse_right = false;
         let view = Ray {
             origin: pos,
             rotation: 0.0,
@@ -45,14 +57,14 @@ impl Game {
             view,
         };
 
-        let map = [
+        let map: GameMap = [
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 1, 1, 0, 0, 0, 1, 0, 1],
-            [1, 0, 1, 1, 0, 0, 0, 0, 0, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-            [1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -61,9 +73,12 @@ impl Game {
         assert!(map.len() == MAP_SIZE);
         Self {
             graphics,
+            mouse_right,
+            mouse_left,
             player,
             map,
             ray_data: ray_lengths,
+            mouse_location,
         }
     }
 
@@ -86,8 +101,83 @@ impl Game {
         }
     }
 
+    fn handle_wall(&mut self, handle: HandleWall) {
+        let n = self.map.len() as f32;
+        let width = self.graphics.gpu_state.size.width as f32;
+        let height = self.graphics.gpu_state.size.height as f32;
+        let x = convert_range(self.mouse_location[0], [0.0, width], [0.0, n * 2.0]) as usize;
+        let y = n as usize
+            - 1
+            - convert_range(self.mouse_location[1], [0.0, height], [0.0, n]) as usize;
+
+        let player_x = convert_range(self.player.pos[0], [-1.0, 1.0], [0.0, n]);
+        let player_y = convert_range(self.player.pos[1], [-1.0, 1.0], [0.0, n]);
+
+        if player_x <= ( x+1 ) as f32 && player_x >= x as f32 && player_y <= (y+1) as f32 && player_y >= y as f32 {
+            return;
+
+        }
+        if x >= (n - 1.0) as usize || y >= (n - 1.0) as usize || x == 0 || y == 0 {
+            return;
+        }
+
+        self.map[x][y] = match handle {
+            HandleWall::Destroy => 0,
+            HandleWall::Create => 1,
+        }
+    }
+
     pub fn input(&mut self, event: &WindowEvent) -> bool {
         match event {
+            WindowEvent::CursorMoved { position, .. } => {
+                self.mouse_location = [position.x as f32, position.y as f32];
+                if self.mouse_left {
+                    self.handle_wall(HandleWall::Create);
+                }
+                if self.mouse_right {
+                    self.handle_wall(HandleWall::Destroy);
+                }
+                true
+            }
+
+            WindowEvent::MouseInput {
+                state: ElementState::Pressed,
+                button: MouseButton::Left,
+                ..
+            } => {
+                self.handle_wall(HandleWall::Create);
+                self.mouse_left = true;
+                true
+            }
+
+            WindowEvent::MouseInput {
+                state: ElementState::Released,
+                button: MouseButton::Left,
+                ..
+            } => {
+                self.mouse_left = false;
+                true
+            }
+
+            WindowEvent::MouseInput {
+                state: ElementState::Pressed,
+                button: MouseButton::Right,
+                ..
+            } => {
+                self.handle_wall(HandleWall::Destroy);
+                self.mouse_right = true;
+                true
+            }
+
+            WindowEvent::MouseInput {
+                state: ElementState::Released,
+                button: MouseButton::Right,
+                ..
+            } => {
+                self.mouse_right = false;
+                true
+            }
+
             WindowEvent::KeyboardInput { input, .. } => match input {
                 KeyboardInput {
                     state: ElementState::Pressed,
@@ -177,7 +267,7 @@ impl Game {
         self.graphics.push_rect_right(ground, GROUND_COLOR);
         self.graphics.push_rect_right(sky, SKY_COLOR);
         let n = self.ray_data.len();
-        let column_width = COORD_WIDTH as f32 / n as f32;
+        let column_width = COORD_SIZE as f32 / n as f32;
         for i in 0..n {
             let (ray_length, lighting) = self.ray_data.get(i).unwrap_or(&(0.0, Lighting::Lit));
             let color = match lighting {
