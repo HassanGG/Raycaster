@@ -24,18 +24,33 @@
     canvas {
       background-color: black;
     }
+
   </style>
 </head>
 
 <body>
-  <div id="canvas">
-    <script type="module">
-      import init from "./pkg/ray_caster.js";
-      init().then(() => {
-        console.log("WASM Loaded");
-      });
-      document.getElementById('canvas').addEventListener('contextmenu', event => event.preventDefault());
-    </script>
+  <div id="page">
+    <div id="canvas">
+      <script type="module">
+        import init from "./pkg/ray_caster.js";
+        init().then(() => {
+          console.log("WASM Loaded");
+        });
+        document.getElementById('canvas').addEventListener('contextmenu', event => event.preventDefault());
+      </script>
+    </div>
+    <section>
+      <h1>
+        Controls
+      </h1>
+      <p>
+        Arrow keys to move forward / backward and rotate left / right. <br>
+        Left click to create walls on the map. <br>
+        Right click to delete walls that you created.
+      </p>
+
+    </section>
+
   </div>
 </body>
 
