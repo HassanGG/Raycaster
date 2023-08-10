@@ -113,9 +113,12 @@ impl Game {
         let player_x = convert_range(self.player.pos[0], [-1.0, 1.0], [0.0, n]);
         let player_y = convert_range(self.player.pos[1], [-1.0, 1.0], [0.0, n]);
 
-        if player_x <= ( x+1 ) as f32 && player_x >= x as f32 && player_y <= (y+1) as f32 && player_y >= y as f32 {
+        if player_x <= (x + 1) as f32
+            && player_x >= x as f32
+            && player_y <= (y + 1) as f32
+            && player_y >= y as f32
+        {
             return;
-
         }
         if x >= (n - 1.0) as usize || y >= (n - 1.0) as usize || x == 0 || y == 0 {
             return;
@@ -277,7 +280,7 @@ impl Game {
             let height = 0.5 / ray_length;
             let rect = Rect {
                 origin: [
-                    (-1.0 + (column_width / 2.0)) + (column_width * i as f32),
+                    (-1.0 + (column_width / 2.0)) + (column_width * (n - i - 1) as f32),
                     0.0,
                 ],
                 rotation: 0.0,
