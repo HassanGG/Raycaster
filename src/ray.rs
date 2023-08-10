@@ -30,12 +30,17 @@ struct StepDirection {
     y: f32,
 }
 
+pub enum Lighting {
+    Shaded,
+    Lit,
+}
+
 type RayLength = StepLength;
 type Position = StepDirection;
 
 impl Ray {
     fn get_direction(&self) -> RayDirection {
-        match self.rotation {
+        match self.rotation % 360.0 {
             r if r > 0.0 && r <= 90.0 => RayDirection::TopLeft,
             r if r > 90.0 && r <= 180.0 => RayDirection::BottomLeft,
             r if r > 180.0 && r <= 270.0 => RayDirection::BottomRight,
@@ -43,7 +48,7 @@ impl Ray {
         }
     }
 
-    pub fn length_at_collision(&self, map: GameMap) -> f32 {
+    pub fn collision(&self, map: GameMap) -> (f32, Lighting) {
         let unit = CELL_WIDTH as f32;
 
         let radians = self.rotation.to_radians();
@@ -74,20 +79,20 @@ impl Ray {
 
         let mut ray_length = match ray_direction {
             RayDirection::TopLeft => RayLength {
-                using_x: (origin.x - position.x.floor()) * step_length.using_x,
-                using_y: ((position.y.floor() + 1.0) - origin.y) * step_length.using_y,
+                using_x: (origin.x - position.x) * step_length.using_x,
+                using_y: ((position.y + 1.0) - origin.y) * step_length.using_y,
             },
             RayDirection::TopRight => RayLength {
-                using_x: ((position.x.floor() + 1.0) - origin.x) * step_length.using_x,
-                using_y: ((position.y.floor() + 1.0) - origin.y) * step_length.using_y,
+                using_x: ((position.x + 1.0) - origin.x) * step_length.using_x,
+                using_y: ((position.y + 1.0) - origin.y) * step_length.using_y,
             },
             RayDirection::BottomLeft => RayLength {
-                using_x: (origin.x - position.x.floor()) * step_length.using_x,
-                using_y: (origin.y - position.y.floor()) * step_length.using_y,
+                using_x: (origin.x - position.x) * step_length.using_x,
+                using_y: (origin.y - position.y) * step_length.using_y,
             },
             RayDirection::BottomRight => RayLength {
-                using_x: ((position.x.floor() + 1.0) - origin.x) * step_length.using_x,
-                using_y: (origin.y - position.y.floor()) * step_length.using_y,
+                using_x: ((position.x + 1.0) - origin.x) * step_length.using_x,
+                using_y: (origin.y - position.y) * step_length.using_y,
             },
         };
 
@@ -95,26 +100,27 @@ impl Ray {
         let max_iter = 50;
         let mut iter = 0;
         let mut final_length = 0.0;
+        let mut lighting: Lighting = Lighting::Shaded;
         while !tile_found && iter < max_iter {
             if ray_length.using_x < ray_length.using_y {
                 position.x += step_direction.x;
                 final_length = ray_length.using_x;
+                lighting = Lighting::Shaded;
                 ray_length.using_x += step_length.using_x;
             } else {
                 position.y += step_direction.y;
                 final_length = ray_length.using_y;
+                lighting = Lighting::Lit;
                 ray_length.using_y += step_length.using_y;
             }
 
             let (i, j) = (position.x as usize, position.y as usize);
 
-
             if map[i][j] == 1 {
                 tile_found = true;
             }
-            // println!("{} {} {} {:#?}", i, j,  tile_found, step_direction);
             iter += 1;
         }
-        final_length
+        (final_length, lighting)
     }
 }

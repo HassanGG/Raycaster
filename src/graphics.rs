@@ -1,7 +1,8 @@
 use crate::{
     gpu::{WGPUState, MAX_INDICES, MAX_VERTICES},
+    ray::Ray,
     util::convert_range,
-    vertex::Vertex, ray::Ray,
+    vertex::Vertex,
 };
 
 pub struct Graphics {
@@ -25,7 +26,6 @@ pub struct Rect {
     pub height: f32,
     pub width: f32,
 }
-
 
 #[derive(Debug, Clone, Copy)]
 pub struct Line {
